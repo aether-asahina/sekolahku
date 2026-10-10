@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sekolahku Digital - Portal SPMB</title>
+    <!-- Menggunakan Tailwind CSS agar langsung rapi & modern -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6 font-sans">
+
+    <div class="max-w-4xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="text-center space-y-2">
+            <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">Sekolahku Digital</h1>
+            <p class="text-slate-400">Portal Penerimaan Murid Baru (SPMB) Online</p>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            
+            <!-- CARD 1: FORM PENDAFTARAN -->
+            <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+                <h2 class="text-xl font-bold mb-4 text-emerald-300">Formulir Pendaftaran</h2>
+                <form id="formDaftar" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nama Lengkap</label>
+                        <input type="text" id="nama_lengkap" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">NISN</label>
+                            <input type="text" id="nisn" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">NIK</label>
+                            <input type="text" id="nik" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Asal Sekolah</label>
+                        <input type="text" id="asal_sekolah" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Tanggal Lahir</label>
+                            <input type="date" id="tanggal_lahir" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500 text-slate-300">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Jalur Pendaftaran</label>
+                            <select id="jalur_pendaftaran" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500 text-slate-300">
+                                <option value="Zonasi">Zonasi</option>
+                                <option value="Afirmasi">Afirmasi</option>
+                                <option value="Prestasi">Prestasi</option>
+                                <option value="Perpindahan Tugas">Perpindahan Tugas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition duration-200 cursor-pointer">
+                        Daftar Sekarang
+                    </button>
+                </form>
+                <div id="resultDaftar" class="mt-4 hidden p-3 rounded-lg text-sm"></div>
+            </div>
+
+            <!-- CARD 2: CEK STATUS PENDAFTARAN -->
+            <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 h-fit">
+                <h2 class="text-xl font-bold mb-4 text-sky-300">Cek Status Siswa</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nomor Pendaftaran (8 Karakter)</label>
+                        <input type="text" id="nomor_cek" placeholder="Contoh: B60B9CF8" class="w-full uppercase bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500 tracking-widest font-mono">
+                    </div>
+                    <button onclick="cekStatus()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2.5 rounded-lg transition duration-200 cursor-pointer">
+                        Cek Status
+                    </button>
+                </div>
+                <div id="resultStatus" class="mt-4 hidden p-4 bg-slate-900 rounded-lg border border-slate-700 text-sm space-y-2">
+                    <!-- Hasil JSON akan dirender di sini -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript untuk Fetch API ke Laravel -->
+    <script>
+        const API_URL = 'http://127.0.0.1:8000/api/spmb';
+
+        // 1. Handle Submit Pendaftaran
+        document.getElementById('formDaftar').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const resultDiv = document.getElementById('resultDaftar');
+
+            const payload = {
+                nama_lengkap: document.getElementById('nama_lengkap').value,
+                nisn: document.getElementById('nisn').value,
+                nik: document.getElementById('nik').value,
+                asal_sekolah: document.getElementById('asal_sekolah').value,
+                tanggal_lahir: document.getElementById('tanggal_lahir').value,
+                jalur_pendaftaran: document.getElementById('jalur_pendaftaran').value,
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/daftar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                resultDiv.classList.remove('hidden');
+
+                if (response.ok) {
+                    resultDiv.className = "mt-4 p-3 rounded-lg text-sm bg-emerald-900/50 border border-emerald-700 text-emerald-200";
+                    resultDiv.innerHTML = `<b>Berhasil!</b> Nomor Pendaftaran Anda: <span class="font-mono font-bold text-white">${result.data.nomor_pendaftaran}</span>. Simpan nomor ini untuk cek status.`;
+                    document.getElementById('formDaftar').reset();
+                } else {
+                    resultDiv.className = "mt-4 p-3 rounded-lg text-sm bg-rose-900/50 border border-rose-700 text-rose-200";
+                    resultDiv.innerHTML = `<b>Gagal:</b> ${Object.values(result.errors || {m: result.message}).flat().join(', ')}`;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Terjadi kesalahan koneksi ke server Laravel.');
+            }
+        });
+
+        // 2. Handle Cek Status
+        async function cekStatus() {
+            const nomor = document.getElementById('nomor_cek').value.trim();
+            const statusDiv = document.getElementById('resultStatus');
+
+            if (!nomor) {
+                alert('Masukkan nomor pendaftaran terlebih dahulu!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/status/${nomor}`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                const result = await response.json();
+                statusDiv.classList.remove('hidden');
+
+                if (response.ok) {
+                    const data = result.data;
+                    statusDiv.innerHTML = `
+                        <p class="text-emerald-400 font-bold">✔ Ditemukan</p>
+                        <hr class="border-slate-700">
+                        <p><b>Nama:</b> ${data.nama_lengkap}</p>
+                        <p><b>Asal Sekolah:</b> ${data.asal_sekolah}</p>
+                        <p><b>Jalur:</b> ${data.jalur_pendaftaran}</p>
+                        <p><b>Status Verifikasi:</b> <span class="px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-300 font-semibold">${data.status}</span></p>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<p class="text-rose-400">${result.message}</p>`;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Gagal terhubung ke server.');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sekolahku Digital - Portal Guru & Siswa</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6 font-sans">
+
+    <div class="max-w-6xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="text-center space-y-2">
+            <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">Sekolahku Digital - Dashboard Akademik</h1>
+            <p class="text-slate-400">Pengujian Modul Absensi dan Manajemen Tugas</p>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            
+            <!-- PANEL 1: INPUT ABSENSI (GURU) -->
+            <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 space-y-4">
+                <h2 class="text-xl font-bold text-emerald-300">Input Absensi Kelas</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nama Kelas</label>
+                        <input type="text" id="absen_kelas" placeholder="Contoh: X IPA 1" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Tanggal</label>
+                        <input type="date" id="absen_tanggal" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500 text-slate-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Daftar Kehadiran Siswa (Format JSON Sederhana)</label>
+                        <textarea id="absen_data" rows="4" class="w-full font-mono text-xs bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-emerald-500 text-slate-300">[
+  {"nama": "Budi Santoso", "status": "Hadir"},
+  {"nama": "Siti Aminah", "status": "Izin"},
+  {"nama": "Ahmad Dani", "status": "Sakit"}
+]</textarea>
+                    </div>
+                    <button onclick="kirimAbsensi()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition duration-200 cursor-pointer">
+                        Simpan Absensi
+                    </button>
+                    <div class="pt-2 flex gap-2">
+                        <button onclick="cekRekapAbsensi()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded font-medium cursor-pointer">Cek Rekap JSON</button>
+                        <a id="downloadCsvBtn" href="#" target="_blank" class="flex-1 text-center bg-sky-700 hover:bg-sky-600 text-xs py-2 rounded font-medium cursor-pointer">Download CSV</a>
+                    </div>
+                </div>
+                <div id="resultAbsensi" class="hidden p-3 rounded-lg text-xs bg-slate-900 border border-slate-700 max-h-40 overflow-y-auto"></div>
+            </div>
+
+            <!-- PANEL 2: MANAJEMEN TUGAS -->
+            <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 space-y-4">
+                <h2 class="text-xl font-bold text-sky-300">Manajemen Tugas Kelas</h2>
+                <form id="formTugas" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Judul Tugas</label>
+                        <input type="text" id="judul_tugas" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Deskripsi</label>
+                        <textarea id="deskripsi_tugas" rows="2" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500 text-slate-300"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Kelas Tujuan</label>
+                            <input type="text" id="tugas_kelas" placeholder="X IPA 1" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Prioritas</label>
+                            <select id="prioritas" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500 text-slate-300">
+                                <option value="Normal">Normal</option>
+                                <option value="Tinggi">Tinggi</option>
+                                <option value="Rendah">Rendah</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Tenggat Waktu</label>
+                        <input type="datetime-local" id="tenggat_waktu" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 focus:outline-none focus:border-sky-500 text-slate-300">
+                    </div>
+                    <button type="submit" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2.5 rounded-lg transition duration-200 cursor-pointer">
+                        Bagikan Tugas
+                    </button>
+                </form>
+                <div>
+                    <button onclick="muatTugasKelas()" class="w-full bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded font-medium cursor-pointer">Muat Daftar Tugas (Kelas: X IPA 1)</button>
+                </div>
+                <div id="resultTugas" class="hidden p-3 rounded-lg text-xs bg-slate-900 border border-slate-700 max-h-40 overflow-y-auto space-y-2"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Integrasi API Absensi & Tugas -->
+    <script>
+        const BASE_URL = 'http://127.0.0.1:8000/api';
+
+        // --- 1. MODUL ABSENSI ---
+        async function kirimAbsensi() {
+            const kelas = document.getElementById('absen_kelas').value;
+            const tanggal = document.getElementById('absen_tanggal').value;
+            let dataKehadiran;
+
+            try {
+                dataKehadiran = JSON.parse(document.getElementById('absen_data').value);
+            } catch (e) {
+                alert('Format JSON data kehadiran tidak valid!');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${BASE_URL}/absensi/simpan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ kelas, tanggal, data_kehadiran: dataKehadiran })
+                });
+                const result = await res.json();
+                alert(result.message);
+                
+                // Set link download CSV otomatis
+                if(res.ok) {
+                    document.getElementById('downloadCsvBtn').href = `${BASE_URL}/absensi/export/${encodeURIComponent(kelas)}`;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Gagal mengirim absensi.');
+            }
+        }
+
+        async function cekRekapAbsensi() {
+            const kelas = document.getElementById('absen_kelas').value || 'X IPA 1';
+            const resBox = document.getElementById('resultAbsensi');
+            resBox.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${BASE_URL}/absensi/rekap/${encodeURIComponent(kelas)}`);
+                const result = await res.json();
+                resBox.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } catch (err) {
+                resBox.innerHTML = 'Data rekap tidak ditemukan.';
+            }
+        }
+
+        // --- 2. MODUL TUGAS ---
+        document.getElementById('formTugas').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const payload = {
+                judul_tugas: document.getElementById('judul_tugas').value,
+                deskripsi: document.getElementById('deskripsi_tugas').value,
+                kelas: document.getElementById('tugas_kelas').value,
+                tenggat_waktu: document.getElementById('tenggat_waktu').value,
+                prioritas: document.getElementById('prioritas').value,
+            };
+
+            try {
+                const res = await fetch(`${BASE_URL}/tugas/buat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                alert(result.message);
+                if(res.ok) document.getElementById('formTugas').reset();
+            } catch (err) {
+                console.error(err);
+                alert('Gagal membuat tugas.');
+            }
+        });
+
+        async function muatTugasKelas() {
+            const kelas = 'X IPA 1';
+            const resBox = document.getElementById('resultTugas');
+            resBox.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${BASE_URL}/tugas/kelas/${encodeURIComponent(kelas)}`);
+                const result = await res.json();
+                
+                if(res.ok) {
+                    let html = `<b class="text-emerald-400">Daftar Tugas (${kelas}):</b><br>`;
+                    result.data.forEach(t => {
+                        html += `<div class="border-b border-slate-700 py-1"><b>${t.judul_tugas}</b> - <span class="text-amber-400">${t.prioritas}</span><br><span class="text-slate-400">Deadline: ${t.tenggat_waktu}</span></div>`;
+                    });
+                    resBox.innerHTML = html;
+                } else {
+                    resBox.innerHTML = `<span class="text-rose-400">${result.message}</span>`;
+                }
+            } catch (err) {
+                resBox.innerHTML = 'Gagal memuat tugas.';
+            }
+        }
+    </script>
+</body>
+</html>
