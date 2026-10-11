@@ -3,98 +3,150 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Absensi;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AbsensiController extends Controller
 {
-    // 1. Guru menyimpan/mencatat absensi per kelas
+    private const STATUS_KEHADIRAN = [
+        'Hadir',
+        'Izin',
+        'Sakit',
+        'Alpa',
+    ];
+
     public function simpanAbsensi(Request $request)
     {
-        $request->validate([
-            'kelas'          => 'required|string|max:50',
-            'tanggal'        => 'required|date',
-            'data_kehadiran' => 'required|array', // Contoh format: [{"nama": "Budi", "status": "Hadir"}, ...]
+        $data = $request->validate([
+            'kelas' => 'required|string|max:50',
+            'tanggal' => 'required|date',
+            'data_kehadiran' => 'required|array|min:1',
+            'data_kehadiran.*' => 'required|array',
+            'data_kehadiran.*.nama' => 'required|string|max:255',
+            'data_kehadiran.*.status' => [
+                'required',
+                'string',
+                Rule::in(self::STATUS_KEHADIRAN),
+            ],
         ]);
 
-        $absensi = Absensi::create([
-            'kelas'          => $request->kelas,
-            'tanggal'        => $request->tanggal,
-            'data_kehadiran' => $request->data_kehadiran,
-        ]);
+        $absensi = Absensi::create($data);
 
         return response()->json([
             'success' => true,
             'message' => 'Absensi kelas berhasil disimpan.',
-            'data'    => $absensi
+            'data' => [
+                'id' => $absensi->id,
+                'kelas' => $absensi->kelas,
+                'tanggal' => $absensi->tanggal,
+                'data_kehadiran' => $absensi->data_kehadiran,
+                'created_at' => $absensi->created_at,
+            ],
         ], 201);
     }
 
-    // 2. Melihat rekap absensi berdasarkan kelas
-    public function rekapAbsensi($kelas)
+    public function rekapAbsensi(string $kelas)
     {
-        $dataAbsensi = Absensi::where('kelas', 'LIKE', "%{$kelas}%")->orderBy('tanggal', 'DESC')->get();
+        $dataAbsensi = Absensi::where('kelas', $kelas)
+            ->orderByDesc('tanggal')
+            ->get();
 
         if ($dataAbsensi->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Belum ada data absensi untuk kelas tersebut.'
+                'message' => 'Belum ada data absensi untuk kelas tersebut.',
             ], 404);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Data rekap absensi ditemukan.',
-            'data'    => $dataAbsensi
-        ], 200);
+            'data' => $dataAbsensi,
+        ]);
     }
 
-    // 3. Ekspor Data Absensi ke Format CSV yang Rapi per Siswa
-    public function exportCsv($kelas)
+    public function exportCsv(string $kelas)
     {
-        $dataAbsensi = Absensi::where('kelas', 'LIKE', "%{$kelas}%")->get();
+        $dataAbsensi = Absensi::where('kelas', $kelas)
+            ->orderByDesc('tanggal')
+            ->get();
 
         if ($dataAbsensi->isEmpty()) {
-            return response()->json(['message' => 'Data tidak ditemukan untuk diekspor'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan untuk diekspor.',
+            ], 404);
         }
 
-        $filename = "rekap-absensi-" . str_replace(' ', '-', strtolower($kelas)) . "-" . date('Y-m-d') . ".csv";
+        $filename = 'rekap-absensi-'
+            . Str::slug($kelas)
+            . '-'
+            . now()->format('Y-m-d')
+            . '.csv';
 
-        $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$filename",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        ];
-
-        $callback = function() use ($dataAbsensi) {
+        $callback = static function () use ($dataAbsensi): void {
             $file = fopen('php://output', 'w');
-            
-            // Header kolom CSV yang bersih dan terstruktur
-            fputcsv($file, ['No', 'Kelas', 'Tanggal', 'Nama Siswa', 'Status Kehadiran']);
+
+            // BOM membantu aplikasi spreadsheet mengenali UTF-8.
+            fwrite($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, [
+                'No',
+                'Kelas',
+                'Tanggal',
+                'Nama Siswa',
+                'Status Kehadiran',
+            ]);
 
             $no = 1;
+
             foreach ($dataAbsensi as $absen) {
-                // $absen->data_kehadiran sudah otomatis jadi array berkat $casts di Model
                 $kehadiranList = $absen->data_kehadiran;
 
-                if (is_array($kehadiranList)) {
-                    foreach ($kehadiranList as $siswa) {
-                        fputcsv($file, [
-                            $no++,
-                            $absen->kelas,
-                            $absen->tanggal,
-                            $siswa['nama'] ?? '-',
-                            $siswa['status'] ?? '-'
-                        ]);
-                    }
+                if (!is_array($kehadiranList)) {
+                    continue;
+                }
+
+                foreach ($kehadiranList as $siswa) {
+                    fputcsv($file, [
+                        $no++,
+                        self::safeCsvCell((string) $absen->kelas),
+                        self::safeCsvCell((string) $absen->tanggal),
+                        self::safeCsvCell((string) ($siswa['nama'] ?? '-')),
+                        self::safeCsvCell((string) ($siswa['status'] ?? '-')),
+                    ]);
                 }
             }
+
             fclose($file);
         };
 
-        return Response::stream($callback, 200, $headers);
+        return Response::stream($callback, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Mencegah teks dari pengguna diperlakukan sebagai formula spreadsheet.
+     */
+    private static function safeCsvCell(string $value): string
+    {
+        $trimmed = ltrim($value);
+
+        if ($trimmed !== '' && preg_match('/^[=+\-@]/', $trimmed)) {
+            return "'" . $value;
+        }
+
+        if (preg_match('/^[\t\r\n]/', $value)) {
+            return "'" . $value;
+        }
+
+        return $value;
     }
 }

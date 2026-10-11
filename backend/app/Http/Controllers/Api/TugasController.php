@@ -37,7 +37,7 @@ class TugasController extends Controller
     // 2. Siswa melihat daftar tugas berdasarkan kelas mereka
     public function daftarTugas($kelas)
     {
-        $tugasList = Tugas::where('kelas', 'LIKE', "%{$kelas}%")
+        $tugasList = Tugas::where('kelas', $kelas)
                           ->orderBy('tenggat_waktu', 'ASC')
                           ->get();
 

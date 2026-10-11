@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Spmb;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SpmbController extends Controller
 {
@@ -24,7 +24,7 @@ class SpmbController extends Controller
         return response()->json([
             "success" => true,
             "message" => "Detail status pendaftaran ditemukan",
-            "data" => $pendaftar
+            "data" => $pendaftar->only(["nomor_pendaftaran", "status", "created_at"])
         ], 200);
     }
 
@@ -44,12 +44,14 @@ class SpmbController extends Controller
         ]);
 
         // Handle Upload Berkas jika ada
-        $pathIjazah = $request->hasFile('berkas_ijazah_skl') ? $request->file('berkas_ijazah_skl')->store('berkas/ijazah', 'public') : null;
-        $pathKK     = $request->hasFile('berkas_kk') ? $request->file('berkas_kk')->store('berkas/kk', 'public') : null;
-        $pathRapor  = $request->hasFile('berkas_rapor') ? $request->file('berkas_rapor')->store('berkas/rapor', 'public') : null;
+        $pathIjazah = $request->hasFile('berkas_ijazah_skl') ? $request->file('berkas_ijazah_skl')->store('berkas/ijazah', 'local') : null;
+        $pathKK     = $request->hasFile('berkas_kk') ? $request->file('berkas_kk')->store('berkas/kk', 'local') : null;
+        $pathRapor  = $request->hasFile('berkas_rapor') ? $request->file('berkas_rapor')->store('berkas/rapor', 'local') : null;
 
-        // Generate Nomor Pendaftaran Unik 8 Karakter
-        $nomorAcak = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
+        // Generate nomor acak dan pastikan belum digunakan.
+        do {
+            $nomorAcak = Str::upper(Str::random(8));
+        } while (Spmb::where('nomor_pendaftaran', $nomorAcak)->exists());
 
         $pendaftaranBaru = Spmb::create([
             "nomor_pendaftaran" => $nomorAcak,
@@ -68,7 +70,7 @@ class SpmbController extends Controller
         return response()->json([
             "success" => true,
             "message" => "Pendaftaran SPMB berhasil! Simpan nomor pendaftaran Anda untuk pengecekan status.",
-            "data"    => $pendaftaranBaru
+            "data"    => $pendaftaranBaru->only(["nomor_pendaftaran", "nama_lengkap", "jalur_pendaftaran", "status"])
         ], 201);
     }
 
@@ -94,7 +96,7 @@ class SpmbController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status pendaftaran berhasil diperbarui.',
-            'data'    => $pendaftar
+            'data'    => $pendaftar->only(['nomor_pendaftaran', 'nama_lengkap', 'status'])
         ], 200);
     }
 }
